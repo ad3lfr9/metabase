@@ -1,3 +1,7 @@
+# Kidoz
+
+Kidoz Inc. owns the leading COPPA & GDPR compliant contextual mobile advertising network that safely reaches hundreds of million kids, teens, and families every month.  We provide an essential suite of advertising technology that unites brands, content publishers and families. Learn more at [Kidoz.net](https://kidoz.net).
+
 # Metabase
 
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
