@@ -341,7 +341,7 @@
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query
     (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
-    :else                                      field-name))
+    :else                                      (clojure.string/replace field-name #"_id." "")))
 
 (defn- field-desired-alias
   "Determine the appropriate `::desired-alias` for a `field-clause`."
