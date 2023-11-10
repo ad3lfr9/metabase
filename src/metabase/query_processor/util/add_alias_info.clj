@@ -1,4 +1,4 @@
-(ns metabase.query-processor.util.add-alias-info
+v(ns metabase.query-processor.util.add-alias-info
   "Walks query and generates appropriate aliases for every selected column; and adds extra keys to the
   corresponding MBQL clauses with this information. Deduplicates aliases and calls [[metabase.driver/escape-alias]]
   with the generated aliases. Adds information about the aliases in source queries and joins that correspond to
@@ -352,7 +352,7 @@
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
     alias-from-source-query alias-from-source-query
-    :else                   field-name))
+    :else                  (clojure.string/replace field-name #"_id." "")))
 
 (defmulti ^:private clause-alias-info
   {:arglists '([inner-query unique-alias-fn clause])}
