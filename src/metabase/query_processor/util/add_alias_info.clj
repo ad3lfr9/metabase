@@ -1,4 +1,4 @@
-(ns metabase.query-processor.util.add-alias-info
+v(ns metabase.query-processor.util.add-alias-info
   "Walks query and generates appropriate aliases for every selected column; and adds extra keys to the
   corresponding MBQL clauses with this information. Deduplicates aliases and calls [[metabase.driver/escape-alias]]
   with the generated aliases. Adds information about the aliases in source queries and joins that correspond to
@@ -341,7 +341,7 @@
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query
     (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
-    :else                                      field-name))
+    :else                                      (clojure.string/replace field-name #"_id." "")))
 
 (defn- field-desired-alias
   "Determine the appropriate `::desired-alias` for a `field-clause`."
