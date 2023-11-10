@@ -46,6 +46,7 @@
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -208,8 +209,13 @@
 (defn- fuzzify [clause]
   (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
 
-(defn- matching-field-in-source-query* [source-query field-clause & {:keys [normalize-fn]
-                                                                     :or   {normalize-fn normalize-clause}}]
+(defn- field-signature
+  [field-clause]
+  [(second field-clause) (get-in field-clause [2 :join-alias])])
+
+(defn- matching-field-in-source-query*
+  [source-query source-metadata field-clause & {:keys [normalize-fn]
+                                                :or   {normalize-fn normalize-clause}}]
   (let [normalized    (normalize-fn field-clause)
         all-exports   (exports source-query)
         field-exports (filter (partial mbql.u/is-clause? :field)
@@ -238,18 +244,26 @@
                             (filter (partial mbql.u/is-clause? :expression) all-exports))
               (m/find-first (fn [[_ _ opts :as _aggregation-options-clause]]
                               (= (::source-alias opts) field-name))
-                            (filter (partial mbql.u/is-clause? :aggregation-options) all-exports)))))))
+                            (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))))
+        ;; look for a field referenced by the name in source-metadata
+        (let [field-name (second field-clause)]
+          (when (string? field-name)
+            (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
+              (let [signature (field-signature (:field_ref column))]
+                (m/find-first #(= (field-signature %) signature) field-exports))))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
   from that source query."
   [inner-query [_ _ {:keys [join-alias]} :as field-clause]]
   (when join-alias
-    (when-let [matching-join-source-query (:source-query (join-with-alias inner-query join-alias))]
-      (matching-field-in-source-query*
-       matching-join-source-query
-       field-clause
-       :normalize-fn #(mbql.u/update-field-options (normalize-clause %) dissoc :join-alias)))))
+    (let [{:keys [source-query source-metadata]} (join-with-alias inner-query join-alias)]
+      (when source-query
+        (matching-field-in-source-query*
+         source-query
+         source-metadata
+         field-clause
+         :normalize-fn #(mbql.u/update-field-options (normalize-clause %) dissoc :join-alias))))))
 
 (defn- field-alias-in-join-at-this-level
   "If `field-clause` is the result of a join at this level, return the `::desired-alias` from that join (where the Field is
@@ -259,10 +273,10 @@
     desired-alias))
 
 (defn- matching-field-in-source-query
-  [{:keys [source-query], :as inner-query} field-clause]
+  [{:keys [source-query source-metadata], :as inner-query} field-clause]
   (when (and source-query
              (= (field-source-table-alias inner-query field-clause) ::source))
-    (matching-field-in-source-query* source-query field-clause)))
+    (matching-field-in-source-query* source-query source-metadata field-clause)))
 
 (defn- field-alias-in-source-query
   [inner-query field-clause]
@@ -341,7 +355,8 @@
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query
     (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
-    :else                                      field-name))
+    :else                                      field-name
+))
 
 (defn- field-desired-alias
   "Determine the appropriate `::desired-alias` for a `field-clause`."
@@ -352,7 +367,7 @@
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
     alias-from-source-query alias-from-source-query
-    :else                   field-name))
+    :else                   (str/replace field-name #"_id." "")))
 
 (defmulti ^:private clause-alias-info
   {:arglists '([inner-query unique-alias-fn clause])}
