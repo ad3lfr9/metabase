@@ -352,7 +352,7 @@
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
     alias-from-source-query alias-from-source-query
-    :else                   field-name))
+    :else                   (clojure.string/replace field-name #"_id." "")))
 
 (defmulti ^:private clause-alias-info
   {:arglists '([inner-query unique-alias-fn clause])}
